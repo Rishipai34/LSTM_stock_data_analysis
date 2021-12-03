@@ -11,7 +11,7 @@ from keras.layers import Dense
 from keras.layers import LSTM
 import preprocess
 
-dataset = pd.read_csv('data/SBIN.csv')
+dataset = pd.read_csv('data/BAJAJ-AUTO.csv')
 training_data = dataset.iloc[:,[8]] # exctract the required colums from the data.In this case High, Low, Open, Close
 #finding some features of the data 
 ohcl_average = dataset.mean(axis = 1)
@@ -20,7 +20,7 @@ closing_values = dataset[['Close']]
 indexes = np.arange(1,len(dataset) + 1, 1)
 plt.plot(indexes, ohcl_average, 'b', label = 'OHCL Average')
 plt.plot(indexes, hcl_average, 'y', label = 'HCL Average')
-plt.plot(indexes, closing_values, label = 'Closing Price')
+plt.plot(indexes, closing_values, label = 'Close')
 plt.legend(loc = 'upper left')
 plt.show()
 plt.figure(figsize = (15,6))
@@ -48,18 +48,33 @@ training_data_closing, testing_data_closing = scaled_training_closing[0:training
 X,y_train = preprocess.preprocess(training_data_closing, 1)
 
 x_train = np.reshape(X, (X.shape[0], X.shape[1], 1))
+
+X,y_test = preprocess.preprocess(testing_data_closing, 1)
+x_test = np.reshape(X, (X.shape[0], X.shape[1], 1))
 lstm_model = Sequential()
 lstm_model.add(LSTM(128, return_sequences=True, input_shape = (x_train.shape[1],1)))
 lstm_model.add(LSTM(50, return_sequences= False))
 lstm_model.add(Dense(25))
 lstm_model.add(Dense(1))
-lstm_model.compile(optimizer='adam', loss= 'mean_squared_error')
+lstm_model.compile(optimizer='adam', loss= 'mean_squared_error', metrics= ["accuracy"])
 
-lstm_model.fit(x_train, y_train, epochs=10, batch_size= 32) # train the model
+history = lstm_model.fit(x_train, y_train, validation_data=(x_test, y_test), epochs=100, batch_size= 32) # train the model
+print(history.history.keys())
+# summarize history for accuracy
+plt.plot(history.history['loss'])
+plt.title('model loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['train', 'test'], loc='upper left')
+plt.show()
 
-#generate the data for testing 
-X,y_test = preprocess.preprocess(testing_data_closing, 1)
-x_test = np.reshape(X, (X.shape[0], X.shape[1], 1))
+plt.plot(history.history['val_loss'])
+plt.title('Testing loss')
+plt.ylabel('loss')
+plt.xlabel('epoch')
+plt.legend(['test'], loc = 'upper left')
+plt.show()
+print(history.history['accuracy'])
 
 #make predictions:
 lstm_prediction = lstm_model.predict(x_test)
